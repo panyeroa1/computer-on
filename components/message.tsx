@@ -8,10 +8,8 @@ import { Streamdown } from "streamdown";
 
 import { ABORTED, cn } from "@/lib/utils";
 import {
-  Bot,
   Camera,
-  CheckCircle2,
-  ChevronRight,
+  CheckCircle,
   CircleSlash,
   Clock,
   Keyboard,
@@ -21,98 +19,8 @@ import {
   MousePointerClick,
   ScrollText,
   StopCircle,
-  Terminal,
 } from "lucide-react";
 
-/* ── Status icon helper ─────────────────────────────────── */
-function StatusIcon({
-  state,
-  result,
-  isLatestMessage,
-  status,
-}: {
-  state: string;
-  result?: unknown;
-  isLatestMessage: boolean;
-  status: string;
-}) {
-  if (state === "call") {
-    return isLatestMessage && status !== "ready" ? (
-      <Loader2 className="animate-spin h-4 w-4 text-blue-500" />
-    ) : (
-      <StopCircle className="h-4 w-4 text-red-500" />
-    );
-  }
-  if (state === "result") {
-    return result === ABORTED ? (
-      <CircleSlash size={14} className="text-amber-500" />
-    ) : (
-      <CheckCircle2 size={14} className="text-emerald-500" />
-    );
-  }
-  return null;
-}
-
-/* ── Tool invocation card ───────────────────────────────── */
-function ToolInvocationCard({
-  icon: Icon,
-  label,
-  detail,
-  state,
-  result,
-  isLatestMessage,
-  status,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  detail?: string;
-  state: string;
-  result?: unknown;
-  isLatestMessage: boolean;
-  status: string;
-  children?: React.ReactNode;
-}) {
-  const borderColor =
-    state === "call"
-      ? "border-blue-200"
-      : result === ABORTED
-        ? "border-amber-200"
-        : "border-emerald-200";
-
-  return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 p-3 mb-3 text-sm bg-white rounded-xl border transition-colors",
-        borderColor,
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-8 h-8 bg-zinc-100 rounded-lg shrink-0">
-          <Icon className="w-4 h-4 text-zinc-600" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-medium text-zinc-800 flex items-center gap-1.5">
-            <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-            {label}
-          </div>
-          {detail && (
-            <p className="text-xs text-zinc-500 mt-0.5 truncate">{detail}</p>
-          )}
-        </div>
-        <StatusIcon
-          state={state}
-          result={result}
-          isLatestMessage={isLatestMessage}
-          status={status}
-        />
-      </div>
-      {children}
-    </div>
-  );
-}
-
-/* ── Main message component ─────────────────────────────── */
 const PurePreviewMessage = ({
   message,
   isLatestMessage,
@@ -123,8 +31,6 @@ const PurePreviewMessage = ({
   status: "error" | "submitted" | "streaming" | "ready";
   isLatestMessage: boolean;
 }) => {
-  const isUser = message.role === "user";
-
   return (
     <AnimatePresence key={message.id}>
       <motion.div
@@ -135,18 +41,20 @@ const PurePreviewMessage = ({
         data-role={message.role}
       >
         <div
-          className={cn("flex gap-3 w-full", {
-            "justify-end": isUser,
-          })}
-        >
-          {/* Bot avatar for assistant */}
-          {!isUser && (
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0 mt-1 shadow-sm">
-              <Bot className="w-4 h-4 text-white" />
-            </div>
+          className={cn(
+            "flex gap-4 w-full group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl",
+            "group-data-[role=user]/message:w-fit",
           )}
+        >
+          {/* {message.role === "assistant" && (
+            <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
+              <div className="translate-y-px">
+                <SparklesIcon size={14} />
+              </div>
+            </div>
+          )} */}
 
-          <div className={cn("flex flex-col", isUser ? "max-w-2xl" : "flex-1")}>
+          <div className="flex flex-col w-full">
             {message.parts?.map((part, i) => {
               switch (part.type) {
                 case "text":
@@ -155,20 +63,19 @@ const PurePreviewMessage = ({
                       initial={{ y: 5, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       key={`message-${message.id}-part-${i}`}
-                      className="pb-4"
+                      className="flex flex-row gap-2 items-start w-full pb-4"
                     >
                       <div
                         className={cn("flex flex-col gap-4", {
-                          "bg-zinc-800 text-zinc-100 px-4 py-2.5 rounded-2xl":
-                            isUser,
-                          "text-zinc-700": !isUser,
+                          "bg-secondary text-secondary-foreground px-3 py-2 rounded-xl":
+                            message.role === "user",
                         })}
                       >
                         <Streamdown>{part.text}</Streamdown>
                       </div>
                     </motion.div>
                   );
-                case "tool-invocation": {
+                case "tool-invocation":
                   const { toolName, toolCallId, state, args } =
                     part.toolInvocation;
 
@@ -183,9 +90,7 @@ const PurePreviewMessage = ({
                     } = args;
                     let actionLabel = "";
                     let actionDetail = "";
-                    let ActionIcon: React.ComponentType<{
-                      className?: string;
-                    }> = MousePointer;
+                    let ActionIcon = null;
 
                     switch (action) {
                       case "screenshot":
@@ -193,23 +98,23 @@ const PurePreviewMessage = ({
                         ActionIcon = Camera;
                         break;
                       case "left_click":
-                        actionLabel = "Left click";
+                        actionLabel = "Left clicking";
                         actionDetail = coordinate
-                          ? `(${coordinate[0]}, ${coordinate[1]})`
+                          ? `at (${coordinate[0]}, ${coordinate[1]})`
                           : "";
                         ActionIcon = MousePointer;
                         break;
                       case "right_click":
-                        actionLabel = "Right click";
+                        actionLabel = "Right clicking";
                         actionDetail = coordinate
-                          ? `(${coordinate[0]}, ${coordinate[1]})`
+                          ? `at (${coordinate[0]}, ${coordinate[1]})`
                           : "";
                         ActionIcon = MousePointerClick;
                         break;
                       case "double_click":
-                        actionLabel = "Double click";
+                        actionLabel = "Double clicking";
                         actionDetail = coordinate
-                          ? `(${coordinate[0]}, ${coordinate[1]})`
+                          ? `at (${coordinate[0]}, ${coordinate[1]})`
                           : "";
                         ActionIcon = MousePointerClick;
                         break;
@@ -232,7 +137,7 @@ const PurePreviewMessage = ({
                         break;
                       case "wait":
                         actionLabel = "Waiting";
-                        actionDetail = duration ? `${duration}s` : "";
+                        actionDetail = duration ? `${duration} seconds` : "";
                         ActionIcon = Clock;
                         break;
                       case "scroll":
@@ -254,68 +159,95 @@ const PurePreviewMessage = ({
                         initial={{ y: 5, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         key={`message-${message.id}-part-${i}`}
+                        className="flex flex-col gap-2 p-2 mb-3 text-sm bg-zinc-50 dark:bg-zinc-900 rounded-md border border-zinc-200 dark:border-zinc-800"
                       >
-                        <ToolInvocationCard
-                          icon={ActionIcon}
-                          label={actionLabel}
-                          detail={actionDetail}
-                          state={state}
-                          result={
-                            state === "result"
-                              ? part.toolInvocation.result
-                              : undefined
-                          }
-                          isLatestMessage={isLatestMessage}
-                          status={status}
-                        >
-                          {state === "result" ? (
-                            part.toolInvocation.result?.type === "image" && (
-                              <div className="mt-1">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={`data:image/png;base64,${part.toolInvocation.result.data}`}
-                                  alt="Screenshot"
-                                  className="w-full aspect-[1024/768] rounded-lg"
+                        <div className="flex-1 flex items-center justify-center">
+                          <div className="flex items-center justify-center w-8 h-8 bg-zinc-50 dark:bg-zinc-800 rounded-full">
+                            {ActionIcon && <ActionIcon className="w-4 h-4" />}
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium font-mono flex items-baseline gap-2">
+                              {actionLabel}
+                              {actionDetail && (
+                                <span className="text-xs text-zinc-500 dark:text-zinc-400 font-normal">
+                                  {actionDetail}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="w-5 h-5 flex items-center justify-center">
+                            {state === "call" ? (
+                              isLatestMessage && status !== "ready" ? (
+                                <Loader2 className="animate-spin h-4 w-4 text-zinc-500" />
+                              ) : (
+                                <StopCircle className="h-4 w-4 text-red-500" />
+                              )
+                            ) : state === "result" ? (
+                              part.toolInvocation.result === ABORTED ? (
+                                <CircleSlash
+                                size={14}
+                                className="text-amber-600"
+                                />                              ) : (
+                                <CheckCircle
+                                  size={14}
+                                  className="text-green-600"
                                 />
-                              </div>
-                            )
-                          ) : action === "screenshot" ? (
-                            <div className="w-full aspect-[1024/768] rounded-lg bg-zinc-100 animate-pulse mt-1" />
-                          ) : null}
-                        </ToolInvocationCard>
+                              )
+                            ) : null}
+                          </div>
+                        </div>
+                        {state === "result" ? (
+                          part.toolInvocation.result.type === "image" && (
+                            <div className="p-2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={`data:image/png;base64,${part.toolInvocation.result.data}`}
+                                alt="Generated Image"
+                                className="w-full aspect-[1024/768] rounded-sm"
+                              />
+                            </div>
+                          )
+                        ) : action === "screenshot" ? (
+                          <div className="w-full aspect-[1024/768] rounded-sm bg-zinc-200 dark:bg-zinc-800 animate-pulse"></div>
+                        ) : null}
                       </motion.div>
                     );
                   }
-
                   if (toolName === "bash") {
                     const { command } = args;
+
                     return (
                       <motion.div
                         initial={{ y: 5, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         key={`message-${message.id}-part-${i}`}
+                        className="flex items-center gap-2 p-2 mb-3 text-sm bg-zinc-50 dark:bg-zinc-900 rounded-md border border-zinc-200 dark:border-zinc-800"
                       >
-                        <ToolInvocationCard
-                          icon={Terminal}
-                          label="Running command"
-                          detail={
-                            command.length > 60
-                              ? command.slice(0, 60) + "…"
-                              : command
-                          }
-                          state={state}
-                          result={
-                            state === "result"
-                              ? part.toolInvocation.result
-                              : undefined
-                          }
-                          isLatestMessage={isLatestMessage}
-                          status={status}
-                        />
+                        <div className="flex items-center justify-center w-8 h-8 bg-zinc-50 dark:bg-zinc-800 rounded-full">
+                          <ScrollText className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium flex items-baseline gap-2">
+                            Running command
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-normal">
+                              {command.slice(0, 40)}...
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-5 h-5 flex items-center justify-center">
+                          {state === "call" ? (
+                            isLatestMessage && status !== "ready" ? (
+                              <Loader2 className="animate-spin h-4 w-4 text-zinc-500" />
+                            ) : (
+                              <StopCircle className="h-4 w-4 text-red-500" />
+                            )
+                          ) : state === "result" ? (
+                            <CheckCircle size={14} className="text-green-600" />
+                          ) : null}
+                        </div>
                       </motion.div>
                     );
                   }
-
                   return (
                     <div key={toolCallId}>
                       <h3>
@@ -324,7 +256,7 @@ const PurePreviewMessage = ({
                       <pre>{JSON.stringify(args, null, 2)}</pre>
                     </div>
                   );
-                }
+
                 default:
                   return null;
               }
@@ -342,7 +274,9 @@ export const PreviewMessage = memo(
     if (prevProps.status !== nextProps.status) return false;
     if (prevProps.message.annotations !== nextProps.message.annotations)
       return false;
+    // if (prevProps.message.content !== nextProps.message.content) return false;
     if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
+
     return true;
   },
 );

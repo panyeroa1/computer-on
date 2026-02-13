@@ -1,40 +1,52 @@
 import { motion } from "motion/react";
-import { Bot, Monitor, Terminal } from "lucide-react";
+import { VercelIcon } from "./icons";
+import { ComputerIcon } from "lucide-react";
+import Link from "next/link";
 
 export const ProjectInfo = () => {
   return (
-    <motion.div
-      className="w-full flex flex-col items-center justify-center py-8"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <div className="flex flex-col items-center gap-6 max-w-md text-center">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-          <Bot className="w-7 h-7 text-white" />
-        </div>
-
-        <div>
-          <h2 className="text-xl font-semibold text-zinc-900 mb-2">
-            Eburon Automation
-          </h2>
-          <p className="text-sm text-zinc-500 leading-relaxed">
-            Tell me what to do on the computer. I can browse the web, run
-            commands, create files, and automate tasks.
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400 bg-zinc-50 px-3 py-1.5 rounded-full border border-zinc-100">
-            <Monitor className="w-3 h-3" />
-            <span>Desktop Control</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400 bg-zinc-50 px-3 py-1.5 rounded-full border border-zinc-100">
-            <Terminal className="w-3 h-3" />
-            <span>Shell Access</span>
-          </div>
-        </div>
+    <motion.div className="w-full px-4">
+      <div className="rounded-lg border-border border p-6 flex flex-col gap-4 text-center text-base dark:text-zinc-400">
+        <p className="flex flex-row justify-center gap-4 items-center text-zinc-900 dark:text-zinc-50">
+          <ComputerIcon />
+        </p>
+        <h3 className="text-center text-2xl font-bold">Eburon Automation</h3>
       </div>
     </motion.div>
+  );
+};
+
+const StyledLink = ({
+  children,
+  href,
+}: {
+  children: React.ReactNode;
+  href: string;
+}) => {
+  return (
+    <Link
+      className="text-blue-500 dark:text-blue-400"
+      href={href}
+      target="_blank"
+    >
+      {children}
+    </Link>
+  );
+};
+
+// const Code = ({ text }: { text: string }) => {
+//   return <code className="">{text}</code>;
+// };
+
+export const DeployButton = () => {
+  return (
+    <Link
+      target="_blank"
+      href={`https://vercel.com/new/clone?project-name=AI+SDK+Computer+Use+Demo&repository-name=ai-sdk-computer-use&repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fai-sdk-computer-use&demo-title=AI+SDK+Computer+Use+Demo&demo-url=https%3A%2F%2Fai-sdk-computer-use.vercel.app%2F&demo-description=A+chatbot+application+built+with+Next.js+demonstrating+computer+use+capabilities+with+Ollama&env=OLLAMA_BASE_URL,OLLAMA_API_KEY,OLLAMA_MODEL,OLLAMA_MODEL_AUTOMATION,OLLAMA_MODEL_OCR,E2B_API_KEY`}
+      className="flex flex-row gap-2 items-center bg-zinc-900 px-3 py-2 rounded-md text-zinc-50 hover:bg-zinc-950 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-50"
+    >
+      <VercelIcon size={14} />
+      Deploy
+    </Link>
   );
 };
