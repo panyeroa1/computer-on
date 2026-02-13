@@ -3,7 +3,7 @@
 </a>
 
 <p align="center">
-  An open-source AI chatbot app template demonstrating Anthropic Claude 3.7 Sonnet's computer use capabilities, built with Next.js and the AI SDK by Vercel.
+  An open-source AI chatbot app template demonstrating computer use with Ollama (OpenAI-compatible), built with Next.js and the AI SDK by Vercel.
 </p>
 
 <p align="center">
@@ -17,7 +17,8 @@
 ## Features
 
 - Streaming text responses powered by the [AI SDK by Vercel](https://sdk.vercel.ai/docs), allowing multiple AI providers to be used interchangeably with just a few lines of code.
-- Integration with Anthropic Claude 3.7 Sonnet's computer use tool and bash tool capabilities.
+- Integration with an Ollama-hosted (OpenAI-compatible) chat model plus computer and bash tools.
+- Optional OCR/vision model for turning screenshots into actionable text + approximate coordinates (`OLLAMA_MODEL_OCR`).
 - Sandbox environment with [e2b](https://e2b.dev) for secure execution.
 - [shadcn/ui](https://ui.shadcn.com/) components for a modern, responsive UI powered by [Tailwind CSS](https://tailwindcss.com).
 - Built with the latest [Next.js](https://nextjs.org) App Router.
@@ -26,7 +27,7 @@
 
 You can deploy your own version to Vercel by clicking the button below:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?project-name=AI+SDK+Computer+Use+Demo&repository-name=ai-sdk-computer-use&repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fai-sdk-computer-use&demo-title=AI+SDK+Computer+Use+Demo&demo-url=https%3A%2F%2Fai-sdk-computer-use.vercel.app%2F&demo-description=A+chatbot+application+built+with+Next.js+demonstrating+Anthropic+Claude+3.7+Sonnet%27s+computer+use+capabilities&env=ANTHROPIC_API_KEY,E2B_API_KEY)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?project-name=AI+SDK+Computer+Use+Demo&repository-name=ai-sdk-computer-use&repository-url=https%3A%2F%2Fgithub.com%2Fvercel-labs%2Fai-sdk-computer-use&demo-title=AI+SDK+Computer+Use+Demo&demo-url=https%3A%2F%2Fai-sdk-computer-use.vercel.app%2F&demo-description=A+chatbot+application+built+with+Next.js+demonstrating+computer+use+capabilities+with+Ollama&env=OLLAMA_BASE_URL,OLLAMA_API_KEY,OLLAMA_MODEL,OLLAMA_MODEL_AUTOMATION,OLLAMA_MODEL_OCR,E2B_API_KEY)
 
 ## Running Locally
 
@@ -63,6 +64,12 @@ You can deploy your own version to Vercel by clicking the button below:
    ```
 
    This will create a `.env.local` file with all the necessary environment variables.
+
+   At minimum you will need:
+   - `E2B_API_KEY`
+   - `OLLAMA_BASE_URL` (example: `http://127.0.0.1:11434/v1`)
+   - `OLLAMA_MODEL` (example: `eburon-new/eburon-2.3:latest`)
+   - `OLLAMA_MODEL_OCR` (recommended: a vision model like `qwen3-vl:2b`)
 
 3. Run the development server:
 
