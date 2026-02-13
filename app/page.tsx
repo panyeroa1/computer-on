@@ -8,8 +8,7 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { DeployButton, ProjectInfo } from "@/components/project-info";
-import { AISDKLogo } from "@/components/icons";
+import { ProjectInfo } from "@/components/project-info";
 import { PromptSuggestions } from "@/components/prompt-suggestions";
 import {
   ResizableHandle,
@@ -216,11 +215,6 @@ export default function Chat() {
             minSize={25}
             className="flex flex-col border-l border-zinc-200"
           >
-            <div className="bg-white py-4 px-4 flex justify-between items-center">
-              <AISDKLogo />
-              <DeployButton />
-            </div>
-
             <div
               className="flex-1 space-y-6 py-4 overflow-y-auto px-4"
               ref={desktopContainerRef}
@@ -264,11 +258,6 @@ export default function Chat() {
 
       {/* Mobile View (Chat Only) */}
       <div className="w-full xl:hidden flex flex-col">
-        <div className="bg-white py-4 px-4 flex justify-between items-center">
-          <AISDKLogo />
-          <DeployButton />
-        </div>
-
         <div
           className="flex-1 space-y-6 py-4 overflow-y-auto px-4"
           ref={mobileContainerRef}

@@ -6,11 +6,16 @@ import { resolution } from "./tool";
 export const getDesktop = async (id?: string) => {
   try {
     if (id) {
-      const connected = await Sandbox.connect(id);
-      const isRunning = await connected.isRunning();
-      if (isRunning) {
-        // await connected.stream.start();
-        return connected;
+      try {
+        const connected = await Sandbox.connect(id);
+        const isRunning = await connected.isRunning();
+        if (isRunning) {
+          // await connected.stream.start();
+          return connected;
+        }
+      } catch (connectError) {
+        console.warn("Could not reconnect to sandbox", id, connectError);
+        // Fall through to create a new one
       }
     }
 

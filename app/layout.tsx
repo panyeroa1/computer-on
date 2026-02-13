@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI SDK Computer Use Demo",
+  title: "Eburon Automation",
   description:
-    "A Next.js app that uses the AI SDK and Ollama (OpenAI-compatible) to create a computer-using agent.",
+    "Eburon Automation - AI-powered computer use agent.",
 };
 
 export default function RootLayout({

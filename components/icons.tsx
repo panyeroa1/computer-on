@@ -51,9 +51,9 @@ export const AISDKLogo = () => {
                   </svg>
                 </div>
                 <div className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">
-                  AI{" "}
+                  Eburon{" "}
                   <span className="hidden min-[385px]:inline">
-                    SDK
+                    Automation
                   </span>
                 </div>
               </div>

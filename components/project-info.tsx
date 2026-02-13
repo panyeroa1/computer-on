@@ -8,31 +8,9 @@ export const ProjectInfo = () => {
     <motion.div className="w-full px-4">
       <div className="rounded-lg border-border border p-6 flex flex-col gap-4 text-center text-base dark:text-zinc-400">
         <p className="flex flex-row justify-center gap-4 items-center text-zinc-900 dark:text-zinc-50">
-          <VercelIcon size={16} />
-          <span>+</span>
           <ComputerIcon />
         </p>
-        <h3 className="text-center text-2xl font-bold">Computer Use Agent</h3>
-        <p>
-          This demo showcases a Computer Use Agent built with the{" "}
-          <StyledLink href="https://sdk.vercel.ai">AI SDK</StyledLink>,{" "}
-          <StyledLink href="https://ollama.com">
-            Ollama (OpenAI-compatible)
-          </StyledLink>
-          , and <StyledLink href="https://e2b.dev">e2b desktop</StyledLink>.
-        </p>
-        <p>
-          {" "}
-          Learn more about{" "}
-          <Link
-            className="text-blue-500 dark:text-blue-400"
-            href="https://sdk.vercel.ai/docs/guides/computer-use"
-            target="_blank"
-          >
-            Computer Use{" "}
-          </Link>
-          with the AI SDK.
-        </p>
+        <h3 className="text-center text-2xl font-bold">Eburon Automation</h3>
       </div>
     </motion.div>
   );
