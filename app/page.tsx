@@ -4,9 +4,8 @@ import { PreviewMessage } from "@/components/message";
 import { getDesktopURL } from "@/lib/e2b/utils";
 import { useScrollToBottom } from "@/lib/use-scroll-to-bottom";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/input";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ProjectInfo } from "@/components/project-info";
 import { PromptSuggestions } from "@/components/prompt-suggestions";
@@ -16,9 +15,10 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { ABORTED } from "@/lib/utils";
+import { StatusBar, getAgentStatus } from "@/components/status-bar";
+import { Bot, RefreshCw } from "lucide-react";
 
 export default function Chat() {
-  // Create separate refs for mobile and desktop to ensure both scroll properly
   const [desktopContainerRef, desktopEndRef] = useScrollToBottom();
   const [mobileContainerRef, mobileEndRef] = useScrollToBottom();
 
@@ -83,11 +83,22 @@ export default function Chat() {
 
   const isLoading = status !== "ready";
 
+  /* ── Derive agent status from latest message ─────────── */
+  const agentStatus = useMemo(() => {
+    const lastMsg = messages.at(-1);
+    if (!lastMsg || lastMsg.role !== "assistant") return getAgentStatus(status);
+    const lastPart = lastMsg.parts?.at(-1);
+    if (lastPart?.type === "tool-invocation") {
+      const { toolName, args } = lastPart.toolInvocation;
+      return getAgentStatus(status, toolName, args?.action);
+    }
+    return getAgentStatus(status);
+  }, [messages, status]);
+
   const refreshDesktop = async () => {
     try {
       setIsInitializing(true);
       const { streamUrl, id } = await getDesktopURL(sandboxId || undefined);
-      // console.log("Refreshed desktop connection with ID:", id);
       setStreamUrl(streamUrl);
       setSandboxId(id);
     } catch (err) {
@@ -101,53 +112,38 @@ export default function Chat() {
   useEffect(() => {
     if (!sandboxId) return;
 
-    // Function to kill the desktop - just one method to reduce duplicates
     const killDesktop = () => {
       if (!sandboxId) return;
-
-      // Use sendBeacon which is best supported across browsers
       navigator.sendBeacon(
         `/api/kill-desktop?sandboxId=${encodeURIComponent(sandboxId)}`,
       );
     };
 
-    // Detect iOS / Safari
     const isIOS =
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-    // Choose exactly ONE event handler based on the browser
     if (isIOS || isSafari) {
-      // For Safari on iOS, use pagehide which is most reliable
       window.addEventListener("pagehide", killDesktop);
-
       return () => {
         window.removeEventListener("pagehide", killDesktop);
-        // Also kill desktop when component unmounts
         killDesktop();
       };
     } else {
-      // For all other browsers, use beforeunload
       window.addEventListener("beforeunload", killDesktop);
-
       return () => {
         window.removeEventListener("beforeunload", killDesktop);
-        // Also kill desktop when component unmounts
         killDesktop();
       };
     }
   }, [sandboxId]);
 
   useEffect(() => {
-    // Initialize desktop and get stream URL when the component mounts
     const init = async () => {
       try {
         setIsInitializing(true);
-
-        // Use the provided ID or create a new one
         const { streamUrl, id } = await getDesktopURL(sandboxId ?? undefined);
-
         setStreamUrl(streamUrl);
         setSandboxId(id);
       } catch (err) {
@@ -157,26 +153,83 @@ export default function Chat() {
         setIsInitializing(false);
       }
     };
-
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* ── Reusable chat panel ─────────────────────────────── */
+  const chatPanel = (
+    containerRef: React.RefObject<HTMLDivElement | null>,
+    endRef: React.RefObject<HTMLDivElement | null>,
+  ) => (
+    <>
+      <div
+        className="flex-1 space-y-4 py-4 overflow-y-auto"
+        ref={containerRef}
+      >
+        {messages.length === 0 ? <ProjectInfo /> : null}
+        {messages.map((message, i) => (
+          <PreviewMessage
+            message={message}
+            key={message.id}
+            isLoading={isLoading}
+            status={status}
+            isLatestMessage={i === messages.length - 1}
+          />
+        ))}
+        <div ref={endRef} className="pb-2" />
+      </div>
+
+      {messages.length === 0 && (
+        <PromptSuggestions
+          disabled={isInitializing}
+          submitPrompt={(prompt: string) =>
+            append({ role: "user", content: prompt })
+          }
+        />
+      )}
+
+      <div className="bg-white border-t border-zinc-100">
+        <form onSubmit={handleSubmit} className="p-4">
+          <Input
+            handleInputChange={handleInputChange}
+            input={input}
+            isInitializing={isInitializing}
+            isLoading={isLoading}
+            status={status}
+            stop={stop}
+          />
+        </form>
+      </div>
+    </>
+  );
+
   return (
-    <div className="flex h-dvh relative">
-      {/* Mobile/tablet banner */}
-      <div className="flex items-center justify-center fixed left-1/2 -translate-x-1/2 top-5 shadow-md text-xs mx-auto rounded-lg h-8 w-fit bg-blue-600 text-white px-3 py-2 text-left z-50 xl:hidden">
+    <div className="flex flex-col h-dvh bg-zinc-100">
+      {/* ── Header ────────────────────────────────────────── */}
+      <header className="flex items-center justify-between px-5 py-3 bg-white border-b border-zinc-200 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-sm">
+            <Bot className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-base font-semibold text-zinc-800">Eburon</span>
+        </div>
+        <StatusBar agentStatus={agentStatus} />
+      </header>
+
+      {/* ── Mobile banner ─────────────────────────────────── */}
+      <div className="flex items-center justify-center fixed left-1/2 -translate-x-1/2 top-16 shadow-md text-xs mx-auto rounded-lg h-8 w-fit bg-blue-600 text-white px-3 py-2 z-50 xl:hidden">
         <span>Headless mode</span>
       </div>
 
-      {/* Resizable Panels */}
-      <div className="w-full hidden xl:block">
+      {/* ── Desktop: resizable panels ─────────────────────── */}
+      <div className="flex-1 w-full hidden xl:block overflow-hidden">
         <ResizablePanelGroup direction="horizontal" className="h-full">
-          {/* Desktop Stream Panel */}
+          {/* Desktop stream */}
           <ResizablePanel
-            defaultSize={70}
+            defaultSize={65}
             minSize={40}
-            className="bg-black relative items-center justify-center"
+            className="bg-zinc-900 relative"
           >
             {streamUrl ? (
               <>
@@ -190,111 +243,47 @@ export default function Chat() {
                   }}
                   allow="autoplay"
                 />
-                <Button
+                <button
                   onClick={refreshDesktop}
-                  className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white px-3 py-1 rounded text-sm z-10"
                   disabled={isInitializing}
+                  className="absolute top-3 right-3 p-2 rounded-lg bg-black/40 backdrop-blur-sm hover:bg-black/60 text-white/80 hover:text-white transition-all z-10 disabled:opacity-40"
+                  title="New desktop"
                 >
-                  {isInitializing ? "Creating desktop..." : "New desktop"}
-                </Button>
+                  <RefreshCw
+                    className={`w-4 h-4 ${isInitializing ? "animate-spin" : ""}`}
+                  />
+                </button>
               </>
             ) : (
-              <div className="flex items-center justify-center h-full text-white">
-                {isInitializing
-                  ? "Initializing desktop..."
-                  : "Loading stream..."}
+              <div className="flex flex-col items-center justify-center h-full text-white/60 gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Bot className="w-5 h-5" />
+                </div>
+                <span className="text-sm">
+                  {isInitializing
+                    ? "Initializing desktop..."
+                    : "Loading stream..."}
+                </span>
               </div>
             )}
           </ResizablePanel>
 
           <ResizableHandle withHandle />
 
-          {/* Chat Interface Panel */}
+          {/* Chat panel */}
           <ResizablePanel
-            defaultSize={30}
+            defaultSize={35}
             minSize={25}
-            className="flex flex-col border-l border-zinc-200"
+            className="flex flex-col bg-white"
           >
-            <div
-              className="flex-1 space-y-6 py-4 overflow-y-auto px-4"
-              ref={desktopContainerRef}
-            >
-              {messages.length === 0 ? <ProjectInfo /> : null}
-              {messages.map((message, i) => (
-                <PreviewMessage
-                  message={message}
-                  key={message.id}
-                  isLoading={isLoading}
-                  status={status}
-                  isLatestMessage={i === messages.length - 1}
-                />
-              ))}
-              <div ref={desktopEndRef} className="pb-2" />
-            </div>
-
-            {messages.length === 0 && (
-              <PromptSuggestions
-                disabled={isInitializing}
-                submitPrompt={(prompt: string) =>
-                  append({ role: "user", content: prompt })
-                }
-              />
-            )}
-            <div className="bg-white">
-              <form onSubmit={handleSubmit} className="p-4">
-                <Input
-                  handleInputChange={handleInputChange}
-                  input={input}
-                  isInitializing={isInitializing}
-                  isLoading={isLoading}
-                  status={status}
-                  stop={stop}
-                />
-              </form>
-            </div>
+            {chatPanel(desktopContainerRef, desktopEndRef)}
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
 
-      {/* Mobile View (Chat Only) */}
-      <div className="w-full xl:hidden flex flex-col">
-        <div
-          className="flex-1 space-y-6 py-4 overflow-y-auto px-4"
-          ref={mobileContainerRef}
-        >
-          {messages.length === 0 ? <ProjectInfo /> : null}
-          {messages.map((message, i) => (
-            <PreviewMessage
-              message={message}
-              key={message.id}
-              isLoading={isLoading}
-              status={status}
-              isLatestMessage={i === messages.length - 1}
-            />
-          ))}
-          <div ref={mobileEndRef} className="pb-2" />
-        </div>
-
-        {messages.length === 0 && (
-          <PromptSuggestions
-            disabled={isInitializing}
-            submitPrompt={(prompt: string) =>
-              append({ role: "user", content: prompt })
-            }
-          />
-        )}
-        <div className="bg-white">
-          <form onSubmit={handleSubmit} className="p-4">
-            <Input
-              handleInputChange={handleInputChange}
-              input={input}
-              isInitializing={isInitializing}
-              isLoading={isLoading}
-              status={status}
-              stop={stop}
-            />
-          </form>
-        </div>
+      {/* ── Mobile: chat only ─────────────────────────────── */}
+      <div className="flex-1 w-full xl:hidden flex flex-col bg-white overflow-hidden">
+        {chatPanel(mobileContainerRef, mobileEndRef)}
       </div>
     </div>
   );

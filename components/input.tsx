@@ -1,5 +1,4 @@
-import { ArrowUp } from "lucide-react";
-import { Input as ShadcnInput } from "./ui/input";
+import { ArrowUp, Square } from "lucide-react";
 
 interface InputProps {
   input: string;
@@ -18,48 +17,35 @@ export const Input = ({
   status,
   stop,
 }: InputProps) => {
+  const isStreaming = status === "streaming" || status === "submitted";
+
   return (
     <div className="relative w-full">
-      <ShadcnInput
-        className="bg-secondary py-6 w-full rounded-xl pr-12"
+      <input
+        className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-3 pr-12 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         value={input}
         autoFocus
-        placeholder={"Tell me what to do..."}
+        placeholder={
+          isInitializing ? "Starting desktop..." : "Tell me what to do..."
+        }
         onChange={handleInputChange}
         disabled={isLoading || isInitializing}
       />
-      {status === "streaming" || status === "submitted" ? (
+      {isStreaming ? (
         <button
           type="button"
           onClick={stop}
-          className="cursor-pointer absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 bg-red-500 hover:bg-red-600 transition-colors"
         >
-          <div className="animate-spin h-4 w-4">
-            <svg className="h-4 w-4 text-white" viewBox="0 0 24 24">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-                fill="none"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-          </div>
+          <Square className="h-3.5 w-3.5 text-white fill-white" />
         </button>
       ) : (
         <button
           type="submit"
           disabled={isLoading || !input.trim() || isInitializing}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 bg-blue-500 hover:bg-blue-600 disabled:bg-zinc-200 disabled:cursor-not-allowed transition-colors"
         >
-          <ArrowUp className="h-4 w-4 text-white" />
+          <ArrowUp className="h-3.5 w-3.5 text-white" />
         </button>
       )}
     </div>
