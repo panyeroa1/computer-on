@@ -33,8 +33,29 @@ const computerToolParameters = z.object({
 export const computerTool = (sandboxId: string) =>
   tool({
     description:
-      "Control a remote desktop at 1024x768. Use action=screenshot to get an OCR + layout description of the current screen; then use mouse/keyboard actions with coordinates.",
+      "Control a remote desktop at 1024x768. Use action=screenshot to capture the current screen; then use mouse/keyboard actions with coordinates.",
     parameters: computerToolParameters,
+    experimental_toToolResultContent(result) {
+      // If the result is a screenshot object, send OCR text to the model
+      if (typeof result === "object" && result !== null && "type" in result) {
+        const r = result as { type: string; data?: string; ocr?: string };
+        if (r.type === "image" && r.ocr) {
+          return [
+            {
+              type: "text" as const,
+              text: `SCREENSHOT OCR (${resolution.x}x${resolution.y}):\n${r.ocr}`,
+            },
+          ];
+        }
+      }
+      // For all other results, send as text
+      return [
+        {
+          type: "text" as const,
+          text: typeof result === "string" ? result : JSON.stringify(result),
+        },
+      ];
+    },
     execute: async ({
       action,
       coordinate,
@@ -50,52 +71,55 @@ export const computerTool = (sandboxId: string) =>
         case "screenshot": {
           const image = await desktop.screenshot();
           const imageBuffer = Buffer.from(image);
+          const base64 = imageBuffer.toString("base64");
 
           const ocrModelId = process.env.OLLAMA_MODEL_OCR;
-          if (!ocrModelId) {
-            return (
-              "Screenshot captured, but OCR is disabled. " +
-              "Set OLLAMA_MODEL_OCR to a vision model (e.g. qwen3-vl) to extract UI text + layout."
-            );
+          let ocrText = "";
+
+          if (ocrModelId) {
+            try {
+              const { text: extractedText } = await generateText({
+                model: ollama.chat(ocrModelId),
+                temperature: 0,
+                maxTokens: 800,
+                system:
+                  "You are an OCR + UI state extractor.\n" +
+                  `The screenshot is a desktop at exactly ${resolution.x}x${resolution.y}.\n` +
+                  "Output:\n" +
+                  "1) A short summary of what app/window is visible.\n" +
+                  "2) All readable text.\n" +
+                  "3) A compact list of important clickable or typeable elements with approximate coordinates (x,y) if possible.\n" +
+                  "Keep it concise and actionable for automation.",
+                messages: [
+                  {
+                    role: "user",
+                    content: [
+                      {
+                        type: "text",
+                        text:
+                          "Extract the current UI state from this screenshot. " +
+                          "When listing elements, include approximate coordinates in the 1024x768 coordinate system.",
+                      },
+                      {
+                        type: "image",
+                        image: imageBuffer,
+                        mimeType: "image/png",
+                      },
+                    ],
+                  },
+                ],
+              });
+              ocrText = extractedText;
+            } catch (error) {
+              console.error("OCR failed:", error);
+              ocrText = "OCR failed – verify OLLAMA_MODEL_OCR config.";
+            }
+          } else {
+            ocrText = "OCR disabled – set OLLAMA_MODEL_OCR for text extraction.";
           }
 
-          try {
-            const { text: ocrText } = await generateText({
-              model: ollama.chat(ocrModelId),
-              temperature: 0,
-              maxTokens: 800,
-              system:
-                "You are an OCR + UI state extractor.\n" +
-                `The screenshot is a desktop at exactly ${resolution.x}x${resolution.y}.\n` +
-                "Output:\n" +
-                "1) A short summary of what app/window is visible.\n" +
-                "2) All readable text.\n" +
-                "3) A compact list of important clickable or typeable elements with approximate coordinates (x,y) if possible.\n" +
-                "Keep it concise and actionable for automation.",
-              messages: [
-                {
-                  role: "user",
-                  content: [
-                    {
-                      type: "text",
-                      text:
-                        "Extract the current UI state from this screenshot. " +
-                        "When listing elements, include approximate coordinates in the 1024x768 coordinate system.",
-                    },
-                    { type: "image", image: imageBuffer, mimeType: "image/png" },
-                  ],
-                },
-              ],
-            });
-
-            return `SCREENSHOT OCR (${resolution.x}x${resolution.y}):\n${ocrText}`;
-          } catch (error) {
-            console.error("OCR failed:", error);
-            return (
-              "Screenshot captured, but OCR failed. " +
-              "Verify OLLAMA_BASE_URL/OLLAMA_MODEL_OCR and that the model supports vision inputs."
-            );
-          }
+          // Return structured result: image for UI, OCR for model (via experimental_toToolResultContent)
+          return { type: "image" as const, data: base64, ocr: ocrText };
         }
         case "wait": {
           if (!duration) throw new Error("Duration required for wait action");
